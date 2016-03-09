@@ -1,30 +1,59 @@
 'use strict';
 
-var lazypipe = require('lazypipe');
-var plugin = require('../helpers/load');
-var pipe;
+var path = require('path');
+var plugin = require('../helpers/plugins');
 
 module.exports = sassPipe;
-
-pipe = lazypipe()
-.pipe(plugin.plumber)
-.pipe(plugin.sourcemaps.init)
-.pipe(plugin.ignore, '**/_*')
-.pipe(plugin.header, '@import \'src/styles/_variables\';')
-.pipe(plugin.pleeease, {
-    browsers: [
-        'last 2 version',
-        '> 5%'
-    ],
-    sass: true
-})
-.pipe(plugin.rename, {extname: '.css'});
 
 /**
  * Returns a pipe that compiles SCSS files to CSS.
  *
- * @returns {Object}
+ * @returns {Stream[]}
  */
 function sassPipe () {
-    return plugin.if('**/*.scss', pipe());
+    return [
+        plugin.ignore('!**/*.scss'),
+        plugin.progeny(),
+        plugin.ignore('**/_*'),
+        plugin.sourcemaps.init(),
+        plugin.pleeease({
+            browsers: [
+                'last 2 versions',
+                '> 5%'
+            ],
+            sass: {
+                importer: importLocator,
+                includePaths: ['src/styles']
+            }
+        }),
+        plugin.rename({extname: '.css'})
+    ];
+}
+
+/**
+ * Transorms import URLs to absolute filesystem paths.
+ *
+ * @param {string} url
+ * @param {string} filepath
+ *
+ * @returns {Object}
+ */
+function importLocator (url, filepath) {
+    if (!url.match(/^https?:\/\/|\.css$/)) {
+        if (url.match(/^\//)) {
+            url = path.resolve('.' + url);
+        } else {
+            filepath = path.relative('', filepath);
+
+            url = path.resolve(
+                'src/styles',
+                path.dirname(filepath),
+                url
+            );
+        }
+    }
+
+    console.log('importLocator', url, filepath);
+
+    return {file: url};
 }

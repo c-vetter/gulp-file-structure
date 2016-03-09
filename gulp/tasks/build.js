@@ -2,33 +2,27 @@
 
 var gulp = require('gulp');
 var helper = require('../helpers');
-var noop = require('through2').obj;
 var pipe = require('../pipes');
 var rm = require('del').sync;
 var wiredep = require('wiredep').stream;
 
-var args = helper.args;
-var plugin = helper.load;
+var plugin = helper.plugins;
 
-gulp.task(
-    'build',
-    buildIndex
-);
+module.exports = build;
 
 /**
  * Builds `index.html` for production.
  *
  * @returns {Pipe}
  */
-function buildIndex () {
+function build () {
     rm('build/**/*');
 
-    // Can run asynchronous without doing real harm.
+    // Can run asynchronously without doing real harm.
     pipe.build.data();
 
     return gulp.src('src/index.html')
-    .pipe(plugin.plumber())
-    .pipe(args.verbose ? plugin.print() : noop())
+    .pipe(helper.printable())
     .pipe(wiredep({
         ignorePath: '../'
     }))
@@ -46,14 +40,11 @@ function buildIndex () {
         relative: false
     }))
 
-    // https://github.com/kangax/html-minifier/issues/215
-    .pipe(plugin.htmlmin({
-        removeComments: true
-    }))
     .pipe(plugin.htmlmin({
         collapseBooleanAttributes: true,
         collapseWhitespace: true,
-        preserveLineBreaks: true
+        preserveLineBreaks: true,
+        removeComments: true
     }))
 
     .pipe(gulp.dest('build'));

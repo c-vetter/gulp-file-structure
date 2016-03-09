@@ -1,40 +1,93 @@
 'use strict';
 
-var lazypipe = require('lazypipe');
-var plugin = require('../helpers/load');
-var pipe;
+var path = require('path');
+var plugin = require('../helpers/plugins');
+var vm = require('vm');
 
 module.exports = jsPipe;
 
-pipe = lazypipe()
-.pipe(plugin.plumber)
-.pipe(plugin.sourcemaps.init)
-
-.pipe(plugin.wrapJs, [
-    '(function () {',
-    '"use strict";',
-    '',
-    '%= body %',
-    '})();'
-].join('\n'))
-
-.pipe(plugin.ngAnnotate, {
-    add: true,
-    /**
-     * gulp-ng-annotate workaround for GH-26:
-     * change sourcemap `file` option from `list.module.js` to `core/nav-list/list.module.js`;
-     * if it breaks your sourcemap setup, please comment at
-     * https://github.com/Kagami/gulp-ng-annotate/issues/26
-     * (you can mute this warning with `gulpWarnings: false` option)
-    */
-    gulpWarnings: false
-});
-
 /**
- * Returns a pipe that wraps JS files in IIFEs.
+ * Returns an array of pipes that wrap in IIFEs and inject angular dependencies in JS files.
  *
- * @returns {Object}
+ * @returns {Pipe[]}
  */
 function jsPipe () {
-    return plugin.if('**/*.js', pipe());
+    return [
+        plugin.ignore('!**/*.js'),
+
+        // Strangely, SyntaxErrors break wrapJs even if `plumber()`ed.
+        // Therefore, this needs explicit checking.
+        plugin.ignore(malformed),
+
+        plugin.sourcemaps.init(),
+
+        // Build bootstrap.js
+        plugin.if(
+            '**/*.bootstrap.js',
+            plugin.remember('app bootstrap')
+        ),
+        plugin.if(
+            '**/*.bootstrap.js',
+            plugin.concat('bootstrap.js')
+        ),
+        plugin.if(
+            'bootstrap.js',
+            plugin.wrapJs([
+                'var bootstrap = {};',
+
+                // https://github.com/estools/estemplate/issues/5
+                '(function () {',
+                '%= body %',
+                '})();',
+
+                'deferredBootstrapper.bootstrap({',
+                    'bootstrapConfig: {strictDi: true},',
+                    'element: document.body,',
+                    'module: "vmsAdmin",',
+                    'resolve: bootstrap',
+                '});'
+            ].join('\n'))
+        ),
+        plugin.if(
+            'bootstrap.js',
+
+            // `gulp-remember` outputs the bootstrap files irrespective of
+            // whether they have actually changed.
+            plugin.cached('app bootstrap')
+        ),
+
+        plugin.wrapJs([
+            '(function () {',
+            '"use strict";',
+            '%= body %',
+            '})();'
+        ].join('\n')),
+        plugin.ngAnnotate({add: true})
+    ];
+}
+
+/**
+ * Checks whether the file being streamed in is malformed.
+ *
+ * @param {Vinyl} file
+ *
+ * @returns {boolean} - true if malformed, false otherwise
+ */
+function malformed (file) {
+    var script;
+
+    try {
+        script = new vm.Script(file.contents);
+    } catch (e) {
+        if (e instanceof SyntaxError) {
+            console.error(
+                'ERROR: file malformed and not processed: %s',
+                path.relative(file.cwd, file.path)
+            );
+
+            return true;
+        }
+    }
+
+    return false;
 }

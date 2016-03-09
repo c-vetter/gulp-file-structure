@@ -1,12 +1,11 @@
 'use strict';
 
+var combine = require('pumpify').obj;
 var gulp = require('gulp');
 var helper = require('../../helpers');
-var noop = require('through2').obj;
-var wiredep = require('wiredep');
+var wiredep = require('wiredep')();
 
-var args = helper.args;
-var plugin = helper.load;
+var plugin = helper.plugins;
 
 module.exports = buildDependenciesPipe;
 
@@ -16,26 +15,27 @@ module.exports = buildDependenciesPipe;
  * @returns {Pipe}
  */
 function buildDependenciesPipe () {
-    var sources = wiredep();
+    var sources;
 
-    sources = sources.js
-    .concat(sources.css)
-    .concat(
-        [
-            'bower_components/font-awesome/**/fonts/*',
-            'bower_components/bootstrap/dist/**/fonts/*'
-        ]
-    );
+    sources = []
+    .concat(wiredep.js)
+    .concat(wiredep.css)
+    .concat([
+        'bower_components/font-awesome/**/fonts/*',
+        'bower_components/bootstrap/dist/**/fonts/*'
+    ]);
 
-    return gulp.src(sources)
-    .pipe(plugin.plumber())
-    .pipe(plugin.sourcemaps.init({loadMaps: true}))
-    .pipe(args.verbose ? plugin.print() : noop())
+    return combine([].concat(
+        gulp.src(sources),
+        plugin.sourcemaps.init({loadMaps: true}),
+        helper.printable(),
 
-    .pipe(plugin.if('*.js', plugin.concat('lib.js')))
-    .pipe(plugin.if('*.css', plugin.concat('lib.css')))
+        plugin.if('*.js', plugin.concat('lib.js')),
+        plugin.if('*.css', plugin.concat('lib.css')),
 
-    .pipe(plugin.if('!**/fonts/**', plugin.rev()))
-    .pipe(plugin.if('!**/fonts/**', plugin.sourcemaps.write('.')))
-    .pipe(gulp.dest('build'));
+        plugin.if('!**/fonts/**', plugin.rev()),
+        plugin.if('!**/fonts/**', plugin.sourcemaps.write('.')),
+
+        gulp.dest('build')
+    ));
 }

@@ -2,9 +2,9 @@
 
 var args = require('../helpers/args');
 var gulp = require('gulp');
-var plugin = require('../helpers/load');
+var plugin = require('../helpers/plugins');
 
-gulp.task('bump', bumpVersion);
+module.exports = bump;
 
 /**
  * Bump the version
@@ -15,7 +15,7 @@ gulp.task('bump', bumpVersion);
  * --type=xyz is also available as --xyz
  * --version=1.2.3 will bump to a specific version and ignore other flags
  */
-function bumpVersion () {
+function bump () {
     var msg = 'Bumping versions';
     var type = args.type;
     var version = args.version;

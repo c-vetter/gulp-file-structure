@@ -2,49 +2,43 @@
 
 var gulp = require('gulp');
 var helper = require('../helpers');
-var noop = require('through2').obj;
 var wiredep = require('wiredep').stream;
 
-var args = helper.args;
-var plugin = helper.load;
-var watch = plugin.watch;
+var plugin = helper.plugins;
 
-gulp.task('doc', [
-    'app',
-    'styles'
-], doc);
+module.exports = watchAndCompileIndex;
 
 /**
  * Triggers building `index.html` on start and on file changes.
  *
  * @returns {Pipe}
  */
-function doc () {
-    watch(
+function watchAndCompileIndex () {
+    gulp.watch(
         [
             'dev/**/*.css',
             'dev/**/*.js'
         ],
         {events: ['add', 'unlink']},
-        buildIndex
+        compileIndex
     );
 
-    watch(
+    gulp.watch(
         'src/index.html',
         {events: ['change']},
-        buildIndex
+        compileIndex
     );
 
-    return buildIndex();
+    return compileIndex();
 }
 
 /**
  * Builds the development version of `index.html`.
  */
-function buildIndex () {
+function compileIndex () {
     return gulp.src('src/index.html')
-    .pipe(plugin.plumber())
-    .pipe(args.verbose ? plugin.print() : noop())
+    .pipe(plugin.duration('Build index.html'))
+    .pipe(helper.printable())
     .pipe(wiredep({
         ignorePath: '../bower_components'
     }))

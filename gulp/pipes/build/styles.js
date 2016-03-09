@@ -1,12 +1,11 @@
 'use strict';
 
+var combine = require('pumpify').obj;
 var gulp = require('gulp');
 var helper = require('../../helpers');
-var noop = require('through2').obj;
 var sassPipe = require('../sass');
 
-var args = helper.args;
-var plugin = helper.load;
+var plugin = helper.plugins;
 
 module.exports = buildStylesPipe;
 
@@ -16,14 +15,13 @@ module.exports = buildStylesPipe;
  * @returns {Pipe}
  */
 function buildStylesPipe () {
-    return gulp.src(['src/styles/**/*.scss'])
-    .pipe(plugin.plumber())
-    .pipe(args.verbose ? plugin.print() : noop())
-    .pipe(sassPipe())
-
-    .pipe(plugin.concat('app.css'))
-
-    .pipe(plugin.rev())
-    .pipe(plugin.sourcemaps.write('.'))
-    .pipe(gulp.dest('build'));
+    return combine([].concat(
+        gulp.src('src/styles/**/*.scss'),
+        helper.printable(),
+        sassPipe(),
+        plugin.concat('app.css'),
+        plugin.rev(),
+        plugin.sourcemaps.write('.'),
+        gulp.dest('build')
+    ));
 }

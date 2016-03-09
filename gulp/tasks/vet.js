@@ -1,16 +1,26 @@
 'use strict';
 
-var gulp = require('gulp');
 var pipe = require('../pipes');
 var watchStream = require('../helpers').watchStream;
 
-gulp.task('vet', vet);
+module.exports = vetFactory;
 
 /**
- * Has JS sources watched and piped into `vetPipe`.
+ * Returns a task function for vetting JS files in the given path.
  *
- * @return {Stream}
+ * @param {string} path
+ *
+ * @return {Function}
  */
-function vet () {
-    return watchStream('src/**/*.js', pipe.vet);
+function vetFactory (path) {
+    return vetTask;
+
+    /**
+     * Has JS sources watched and piped into the `vet` pipe.
+     *
+     * @return {Stream}
+     */
+    function vetTask () {
+        return watchStream(path + '/**/*.js', pipe.vet);
+    }
 }

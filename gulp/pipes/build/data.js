@@ -2,10 +2,6 @@
 
 var gulp = require('gulp');
 var helper = require('../../helpers');
-var noop = require('through2').obj;
-
-var args = helper.args;
-var plugin = helper.load;
 
 module.exports = buildDataPipe;
 
@@ -16,7 +12,6 @@ module.exports = buildDataPipe;
  */
 function buildDataPipe () {
     return gulp.src('data/**/*', {base: '.'})
-    .pipe(plugin.plumber())
-    .pipe(args.verbose ? plugin.print() : noop())
+    .pipe(helper.printable())
     .pipe(gulp.dest('build'));
 }
